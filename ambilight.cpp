@@ -32,7 +32,8 @@ const int MAX_BUTTON_PIN = 29;   // BUTTON_OK = 29  in this case
 // how long to wait for stable button state
 const long debounce_delay = 100;
 
-const long FADE_OUT_DELAY = 100;  // 100ms 
+const long FADE_OUT_DELAY     = 2000;  // 2s
+const long FADE_OUT_THRESHOLD = 50;    // fade out only when all colors are < FADE_OUT_THRESHOLD
 
 
 // mode constants
@@ -92,13 +93,13 @@ struct rgb {
   int blue;
 };
 
-struct demo_data {
+struct channel_data {
   struct rgb value;
   struct rgb direction;
   long last_modified;
 };
 
-struct demo_data channels_data[CHANNELS];
+struct channel_data channels_data[CHANNELS];
 
 
 LiquidCrystal lcd(LCD_RS, LCD_CLK, LCD_DATA_1, LCD_DATA_2, LCD_DATA_3, LCD_DATA_4, LCD_BACKLIGHT);
@@ -404,24 +405,21 @@ void display_number(unsigned long number) {
   char status_message[17];  
   
   lcd.setCursor(0, 1);
-  sprintf(status_message, "%ul", number);
+  sprintf(status_message, "%u", number);
   lcd.print(status_message);   
 }
 
-
-
 int get_fade_out_value(int current_color, int new_color, long last_modified, int *updated, long current_time) {
   
+  int tmp_color;
+
   if(new_color < current_color) {
-    if(current_time - last_modified > FADE_OUT_DELAY) {
-      new_color = (new_color + current_color) / 2;
-      *updated = 1;
-    } else {
-      new_color = current_color;
-    }
+    tmp_color = ((current_color - new_color) * (FADE_OUT_DELAY + last_modified - current_time)) / FADE_OUT_DELAY;
+    new_color = (tmp_color < new_color) ? new_color : tmp_color;
   }
   return new_color;
 }
+
 
 void fluorescent_lamp_animation() {
 
@@ -590,13 +588,16 @@ void loop()  {
             green = Serial.read();
             blue = Serial.read();
 	    
-	    red = get_fade_out_value(channels_data[i].value.red, red, channels_data[i].last_modified, &channel_updated, current_time);
-	    green = get_fade_out_value(channels_data[i].value.green, green, channels_data[i].last_modified, &channel_updated, current_time);
-	    blue = get_fade_out_value(channels_data[i].value.blue, blue, channels_data[i].last_modified, &channel_updated, current_time);
-	    
-	    if(channel_updated) {
-              channels_data[i].last_modified = current_time;
+	    if(red < FADE_OUT_THRESHOLD && green < FADE_OUT_THRESHOLD && blue < FADE_OUT_THRESHOLD) {
+              red = get_fade_out_value(channels_data[i].value.red, red, channels_data[i].last_modified, &channel_updated, current_time);
+              green = get_fade_out_value(channels_data[i].value.green, green, channels_data[i].last_modified, &channel_updated, current_time);
+              blue = get_fade_out_value(channels_data[i].value.blue, blue, channels_data[i].last_modified, &channel_updated, current_time);
 	    }
+    
+	    //if(channel_updated) {
+              channels_data[i].last_modified = current_time;
+	    //}
+
 	    channels_data[i].value.red = red;
 	    channels_data[i].value.green = green;
 	    channels_data[i].value.blue = blue;
@@ -659,11 +660,11 @@ void loop()  {
   } // case mode    
 
 
-/*  if(end - start > max_duration && config.mode == BOBLIGHT && millis() > 5000) {
+  if(end - start > max_duration && config.mode == BOBLIGHT && millis() > 5000) {
     max_duration = end - start;
     display_number(max_duration);
   }
-*/
+
 }
 
 
