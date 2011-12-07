@@ -16,6 +16,7 @@ int get_active_button();
 int handle_buttons();
 void display_status();
 int get_fade_out_value(int current_color, int new_color, long last_modified, int *updated, long current_time);
+void fluorescent_lamp_animation();
 
 
 // number of LED strips
@@ -422,53 +423,7 @@ int get_fade_out_value(int current_color, int new_color, long last_modified, int
   return new_color;
 }
 
-
-
-void setup()  {
-  
-  // LCD initialization
-  lcd.begin(16, 2);
-  lcd.touchBacklight();
-
-  Serial.begin(115200); 
-  Tlc.init(0);
- 
-  // buttons
-  pinMode(BUTTON_UP, INPUT);
-  pinMode(BUTTON_DOWN, INPUT);
-  pinMode(BUTTON_OK, INPUT);
-  pinMode(BUTTON_BACK, INPUT);
-  
-  // setup for buttons
-  for(int i = 0; i < MAX_BUTTON_PIN + 1; i++){
-    buttons_state[i].last_debounce_time = 0;
-    buttons_state[i].last_button_state = LOW;
-  }
-  
-  // load settings from EEPROM
-  config.mode = EEPROM.read(MODE_ADDR);
-  config.light_level_percent = EEPROM.read(LIGHT_LEVEL_ADDR);
-  config.light_level = map(config.light_level_percent, 0, 100, 0, 4095);
-  config.red_color = EEPROM.read(RED_COLOR_ADDR);
-  config.green_color = EEPROM.read(GREEN_COLOR_ADDR);
-  config.blue_color = EEPROM.read(BLUE_COLOR_ADDR);
-  
-  menuSetup(); 
-  menu.setCurrent(&status_m);
-
-  // init auxiliary array
-  for(int i = 0; i < CHANNELS; i++) {
-    channels_data[i].value.red = 0;
-    channels_data[i].value.green = 0;
-    channels_data[i].value.blue = 0;
-    channels_data[i].direction.red = 1;
-    channels_data[i].direction.green = 1;
-    channels_data[i].direction.blue = 1;
-    channels_data[i].last_modified = millis();
-  }
-
-
-  // WELCOME
+void fluorescent_lamp_animation() {
 
   // black
   for(int i = 0; i < CHANNELS; i++) {
@@ -539,8 +494,58 @@ void setup()  {
     Tlc.update();
     delay(10);
   }
+}
+
+
+void setup()  {
+  
+  // LCD initialization
+  lcd.begin(16, 2);
+  lcd.touchBacklight();
+
+  Serial.begin(115200); 
+  Tlc.init(0);
  
+  // buttons
+  pinMode(BUTTON_UP, INPUT);
+  pinMode(BUTTON_DOWN, INPUT);
+  pinMode(BUTTON_OK, INPUT);
+  pinMode(BUTTON_BACK, INPUT);
+  
+  // setup for buttons
+  for(int i = 0; i < MAX_BUTTON_PIN + 1; i++){
+    buttons_state[i].last_debounce_time = 0;
+    buttons_state[i].last_button_state = LOW;
+  }
+  
+  // load settings from EEPROM
+  config.mode = EEPROM.read(MODE_ADDR);
+  config.light_level_percent = EEPROM.read(LIGHT_LEVEL_ADDR);
+  config.light_level = map(config.light_level_percent, 0, 100, 0, 4095);
+  config.red_color = EEPROM.read(RED_COLOR_ADDR);
+  config.green_color = EEPROM.read(GREEN_COLOR_ADDR);
+  config.blue_color = EEPROM.read(BLUE_COLOR_ADDR);
+  
+  menuSetup(); 
+  menu.setCurrent(&status_m);
+
+  // init auxiliary array
+  for(int i = 0; i < CHANNELS; i++) {
+    channels_data[i].value.red = 0;
+    channels_data[i].value.green = 0;
+    channels_data[i].value.blue = 0;
+    channels_data[i].direction.red = 1;
+    channels_data[i].direction.green = 1;
+    channels_data[i].direction.blue = 1;
+    channels_data[i].last_modified = millis();
+  }
+
+  // starting animation
+  fluorescent_lamp_animation();
 } 
+
+
+
 
 void loop()  { 
   
