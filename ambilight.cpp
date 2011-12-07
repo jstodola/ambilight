@@ -535,7 +535,7 @@ void setup()  {
   delay(400);
 
   for(int i = 0; i < LEFT; i ++) {
-    strip_write_color(i + LEFT + RIGHT, config.light_level, config.red_color, config.green_color, config.blue_color);
+    strip_write_color(i + LEFT + TOP, config.light_level, config.red_color, config.green_color, config.blue_color);
     Tlc.update();
     delay(10);
   }
@@ -578,14 +578,14 @@ void loop()  {
   start=micros();
       if(Serial.available() >= 3 * CHANNELS + 1) {
         if(Serial.read() == 0xFF) {
-	  //current_time = millis();
+	  current_time = millis();
           for(int i = 0; i < CHANNELS; i++) {
 	    channel_updated = 0;
             red = Serial.read();
             green = Serial.read();
             blue = Serial.read();
 	    
-	    /*red = get_fade_out_value(channels_data[i].value.red, red, channels_data[i].last_modified, &channel_updated, current_time);
+	    red = get_fade_out_value(channels_data[i].value.red, red, channels_data[i].last_modified, &channel_updated, current_time);
 	    green = get_fade_out_value(channels_data[i].value.green, green, channels_data[i].last_modified, &channel_updated, current_time);
 	    blue = get_fade_out_value(channels_data[i].value.blue, blue, channels_data[i].last_modified, &channel_updated, current_time);
 	    
@@ -595,7 +595,7 @@ void loop()  {
 	    channels_data[i].value.red = red;
 	    channels_data[i].value.green = green;
 	    channels_data[i].value.blue = blue;
-            */
+            
 	    strip_write_color(i, config.light_level, red, green, blue);
           }
   //start=micros();
