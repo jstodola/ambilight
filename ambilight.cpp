@@ -15,7 +15,7 @@ int read_button_state(int BUTTON_PIN);
 int get_active_button();
 int handle_buttons();
 void display_status();
-int get_fade_out_value(int current_color, int new_color, long last_modified, int *updated, long current_time);
+int get_fade_out_value(int current_color, int new_color, long last_modified, long current_time);
 void fluorescent_lamp_animation();
 
 
@@ -30,7 +30,7 @@ const int CHANNELS = LEFT + TOP + RIGHT;
 const int MAX_BUTTON_PIN = 29;   // BUTTON_OK = 29  in this case
 
 // how long to wait for stable button state
-const long debounce_delay = 100;
+const unsigned long debounce_delay = 100;
 
 const long FADE_OUT_DELAY     = 2000;  // 2s
 const long FADE_OUT_THRESHOLD = 50;    // fade out only when all colors are < FADE_OUT_THRESHOLD
@@ -79,7 +79,7 @@ struct configuration {
 };
 
 struct button_state {
-  long last_debounce_time;
+  unsigned long last_debounce_time;
   int last_button_state;
 };
 
@@ -405,11 +405,11 @@ void display_number(unsigned long number) {
   char status_message[17];  
   
   lcd.setCursor(0, 1);
-  sprintf(status_message, "%u", number);
+  sprintf(status_message, "%lu", number);
   lcd.print(status_message);   
 }
 
-int get_fade_out_value(int current_color, int new_color, long last_modified, int *updated, long current_time) {
+int get_fade_out_value(int current_color, int new_color, long last_modified, long current_time) {
   
   int tmp_color;
 
@@ -549,11 +549,10 @@ void loop()  {
   
   int red, green, blue;
   int button_pressed;
-  int channel_updated;
   long current_time;
   unsigned static long max_duration = 0;
-  unsigned long start, end;
-  static int first = 1;
+  unsigned long start = 0;
+  unsigned long end = 0;
 
 
   button_pressed = handle_buttons();
@@ -583,20 +582,17 @@ void loop()  {
         if(Serial.read() == 0xFF) {
 	  current_time = millis();
           for(int i = 0; i < CHANNELS; i++) {
-	    channel_updated = 0;
             red = Serial.read();
             green = Serial.read();
             blue = Serial.read();
 	    
 	    if(red < FADE_OUT_THRESHOLD && green < FADE_OUT_THRESHOLD && blue < FADE_OUT_THRESHOLD) {
-              red = get_fade_out_value(channels_data[i].value.red, red, channels_data[i].last_modified, &channel_updated, current_time);
-              green = get_fade_out_value(channels_data[i].value.green, green, channels_data[i].last_modified, &channel_updated, current_time);
-              blue = get_fade_out_value(channels_data[i].value.blue, blue, channels_data[i].last_modified, &channel_updated, current_time);
+              red = get_fade_out_value(channels_data[i].value.red, red, channels_data[i].last_modified, current_time);
+              green = get_fade_out_value(channels_data[i].value.green, green, channels_data[i].last_modified, current_time);
+              blue = get_fade_out_value(channels_data[i].value.blue, blue, channels_data[i].last_modified, current_time);
 	    }
-    
-	    //if(channel_updated) {
-              channels_data[i].last_modified = current_time;
-	    //}
+   
+            channels_data[i].last_modified = current_time;
 
 	    channels_data[i].value.red = red;
 	    channels_data[i].value.green = green;
