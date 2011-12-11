@@ -10,14 +10,17 @@
 void menuSetup();
 void menuUseEvent(MenuUseEvent used);
 void menuChangeEvent(MenuChangeEvent changed);
-void strip_write_color(int strip, int max_level, int red, int green, int blue);
+void strip_write_color_linear(int strip, int max_level, int red, int green, int blue);
+void strip_write_color_with_correction(int strip, int max_level, int red, int green, int blue);
 int read_button_state(int BUTTON_PIN);
 int get_active_button();
 int handle_buttons();
 void display_status();
 int get_fade_out_value(int current_color, int new_color, long last_modified, long current_time);
 void fluorescent_lamp_animation();
+void init_gamma_correction_table();
 
+void (*strip_write_color)(int strip, int max_level, int red, int green, int blue);
 
 // number of LED strips
 const int LEFT     = 6;
@@ -26,13 +29,15 @@ const int RIGHT    = 6;
 
 const int CHANNELS = LEFT + TOP + RIGHT;
 
+float GAMMA = 2.0;
+
 // max arduino PIN number where any button is attached
 const int MAX_BUTTON_PIN = 29;   // BUTTON_OK = 29  in this case
 
 // how long to wait for stable button state
 const unsigned long debounce_delay = 100;
 
-const long FADE_OUT_DELAY     = 2000;  // 2s
+const long FADE_OUT_DELAY     = 4000;  // 2s
 const long FADE_OUT_THRESHOLD = 50;    // fade out only when all colors are < FADE_OUT_THRESHOLD
 
 
@@ -101,6 +106,8 @@ struct channel_data {
 
 struct channel_data channels_data[CHANNELS];
 
+int gamma_correction[256];
+
 
 LiquidCrystal lcd(LCD_RS, LCD_CLK, LCD_DATA_1, LCD_DATA_2, LCD_DATA_3, LCD_DATA_4, LCD_BACKLIGHT);
 
@@ -122,6 +129,9 @@ MenuBackend menu = MenuBackend(menuUseEvent,menuChangeEvent);
         MenuItem select_constant_color_blue_select_m = MenuItem("!!select_constant_color_blue_select_m");
     MenuItem light_level_m = MenuItem("Light level");
       MenuItem light_level_select_m = MenuItem("!!light_level_select_m");
+    MenuItem light_gamma_correction_m = MenuItem("Gamma correction");
+    MenuItem gamma_level_m = MenuItem("Gamma_level");
+      MenuItem select_gamma_level_m = MenuItem("!!select_gamma_level_m");
       
   MenuItem save_m = MenuItem("Save settings");
 
@@ -176,16 +186,26 @@ void menuSetup() {
           select_constant_color_blue_select_m.addBefore(select_constant_color_blue_select_m);
           select_constant_color_blue_select_m.addAfter(select_constant_color_blue_select_m);
           select_constant_color_blue_select_m.addLeft(select_constant_color_blue_m);          
-        
+
       light_level_m.addBefore(select_constant_color_m);
       light_level_m.addRight(light_level_select_m);
         light_level_select_m.addBefore(light_level_select_m);
         light_level_select_m.addAfter(light_level_select_m);
         light_level_select_m.addLeft(light_level_m);
-     
+      light_level_m.addAfter(light_gamma_correction_m);
+      light_gamma_correction_m.addBefore(light_level_m);
+      light_gamma_correction_m.addAfter(gamma_level_m);
+      gamma_level_m.addBefore(light_gamma_correction_m);
+      gamma_level_m.addRight(select_gamma_level_m);
+        select_gamma_level_m.addBefore(select_gamma_level_m);
+	select_gamma_level_m.addAfter(select_gamma_level_m);
+	select_gamma_level_m.addLeft(gamma_level_m);
+
+
       select_constant_color_m.addLeft(settings_m);
       light_level_m.addLeft(settings_m);
-    
+      light_gamma_correction_m.addLeft(settings_m);
+      gamma_level_m.addLeft(settings_m);
     save_m.addBefore(settings_m);
 }
 
@@ -221,6 +241,12 @@ void menuUseEvent(MenuUseEvent used) {
     EEPROM.write(RED_COLOR_ADDR, config.red_color);
     EEPROM.write(GREEN_COLOR_ADDR, config.green_color);
     EEPROM.write(BLUE_COLOR_ADDR, config.blue_color);
+  } else if(used.item == light_gamma_correction_m) {
+    if(strip_write_color == &strip_write_color_linear) {
+      strip_write_color = &strip_write_color_with_correction;
+    } else {
+      strip_write_color = &strip_write_color_linear;
+    }
   }
 }
 
@@ -277,7 +303,23 @@ void menuChangeEvent(MenuChangeEvent changed) {
     else if(changed.to == select_constant_color_green_select_m) { config.green_color = color; }
     else if(changed.to == select_constant_color_blue_select_m) { config.blue_color = color; }
     else { return; }
+  } else if(changed.to == select_gamma_level_m) {
+
+     switch(changed.move) {
+      case MOVE_UP:
+        GAMMA += 0.1;
+        break;
+      case MOVE_DOWN:        
+        GAMMA -= 0.1;
+        break;
+      }
     
+    sprintf(lcd_message, "%d", (int)(GAMMA * 10));
+    lcd.clear();
+    lcd.print(lcd_message);
+
+    init_gamma_correction_table();
+
   } else {
     lcd.clear();
 
@@ -306,7 +348,7 @@ void menuChangeEvent(MenuChangeEvent changed) {
   }
 }
 
-void strip_write_color(int strip, int max_level, int red, int green, int blue) {
+void strip_write_color_linear(int strip, int max_level, int red, int green, int blue) {
   
   if(strip & 1) {   // stupid feature, all odd stripes have RED <-> BLUE wires switched
     Tlc.set(strip * 3, map(red, 0, 255, 0, max_level));
@@ -317,6 +359,20 @@ void strip_write_color(int strip, int max_level, int red, int green, int blue) {
   }
   Tlc.set(strip * 3 + 1, map(green, 0, 255, 0, max_level));
 }
+
+
+void strip_write_color_with_correction(int strip, int max_level, int red, int green, int blue) {
+  
+  if(strip & 1) {   // stupid feature, all odd stripes have RED <-> BLUE wires switched
+    Tlc.set(strip * 3, map(gamma_correction[red], 0, 4096, 0, max_level));
+    Tlc.set(strip * 3 + 2, map(gamma_correction[blue], 0, 4096, 0, max_level));
+  } else {
+    Tlc.set(strip * 3, map(gamma_correction[blue], 0, 4096, 0, max_level));
+    Tlc.set(strip * 3 + 2, map(gamma_correction[red], 0, 4096, 0, max_level));
+  }
+  Tlc.set(strip * 3 + 1, map(gamma_correction[green], 0, 4096, 0, max_level));
+}
+
 
 int read_button_state(int BUTTON_PIN) {
 
@@ -494,6 +550,16 @@ void fluorescent_lamp_animation() {
   }
 }
 
+void init_gamma_correction_table() {
+  
+  float base;
+
+  for(int i = 0; i < 256; i++) {
+    base = ((float)4096 / 256 * (i + 1)) / 4096;
+    gamma_correction[i] = int(4096 * pow(base, GAMMA));
+  }
+
+}
 
 void setup()  {
   
@@ -538,8 +604,13 @@ void setup()  {
     channels_data[i].last_modified = millis();
   }
 
+  init_gamma_correction_table();
+
+  strip_write_color = strip_write_color_with_correction;
+
   // starting animation
   fluorescent_lamp_animation();
+
 } 
 
 
