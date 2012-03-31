@@ -155,8 +155,10 @@ COMMON_FLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
 COMMON_FLAGS += -Wl,--relax
 COMMON_FLAGS += -mcall-prologues
 
-CFLAGS = $(COMMON_FLAGS) -std=gnu99 -Wstrict-prototypes  
+CFLAGS = $(COMMON_FLAGS) -std=gnu99 -Wstrict-prototypes -pedantic
 CXXFLAGS = $(COMMON_FLAGS) 
+
+LDLIBS = -lm
 
 # Replace standard build tools by avr tools
 CC = $(AVRTOOLSPATH)avr-gcc
