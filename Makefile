@@ -59,7 +59,7 @@ AVRDUDE_PORT:=/dev/ttyACM0
 
 # List of all libaries which should be included.
 EXTRA_DIRS=$(ARDUINO_PATH)libraries/LiquidCrystal_mod/
-EXTRA_DIRS+=$(ARDUINO_PATH)libraries/MenuBackend_mod/
+#EXTRA_DIRS+=$(ARDUINO_PATH)libraries/MenuBackend_mod/
 EXTRA_DIRS+=$(ARDUINO_PATH)libraries/Tlc5940/
 EXTRA_DIRS+=$(ARDUINO_PATH)libraries/EEPROM/
 #EXTRA_DIRS+=/home/kraus/src/arduino/dogm128/hg/libraries/Dogm/
