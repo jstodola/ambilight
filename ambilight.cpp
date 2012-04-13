@@ -278,7 +278,7 @@ void boblight(channel_data channels_data[]) {
                 green = Serial.read();
                 blue = Serial.read();
         
-                if(red < FADE_OUT_THRESHOLD && green < FADE_OUT_THRESHOLD && blue < FADE_OUT_THRESHOLD) {
+/*                if(red < FADE_OUT_THRESHOLD && green < FADE_OUT_THRESHOLD && blue < FADE_OUT_THRESHOLD) {
                     red = get_fade_out_value(channels_data[i].value.red, red, channels_data[i].last_modified, current_time);
                     green = get_fade_out_value(channels_data[i].value.green, green, channels_data[i].last_modified, current_time);
                     blue = get_fade_out_value(channels_data[i].value.blue, blue, channels_data[i].last_modified, current_time);
@@ -288,7 +288,7 @@ void boblight(channel_data channels_data[]) {
 
                 channels_data[i].value.red = red;
                 channels_data[i].value.green = green;
-                channels_data[i].value.blue = blue;
+                channels_data[i].value.blue = blue; */
                 
                 strip_write_color(i, config.light_level, red, green, blue);
             }
