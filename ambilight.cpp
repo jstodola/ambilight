@@ -1,14 +1,21 @@
 #include <Arduino.h>
-#include <LiquidCrystal.h>
 #include <EEPROM.h>
 #include <Tlc5940.h>
 #include <stdio.h>
 
+#define NANO
+
+#if defined NANO
+    #include <SoftwareSerial.h>
+    SoftwareSerial Software_serial(2, 4); // RX, TX
+    #define bt_serial Software_serial
+#else
+    #define bt_serial Serial1
+#endif
 
 // functions
 void strip_write_color_linear(int strip, int max_level, int red, int green, int blue);
 void strip_write_color_with_correction(int strip, int max_level, int red, int green, int blue);
-void display_status();
 int get_fade_out_value(int current_color, int new_color, long last_modified, long current_time);
 void fluorescent_lamp_animation();
 void init_gamma_correction_table();
@@ -54,18 +61,6 @@ const int GREEN_COLOR_ADDR   = 4;
 const int BLUE_COLOR_ADDR    = 5;
 
 
-// INPUT/OUTPUT PINS
-
-// lcd
-const int LCD_RS        = 35;
-const int LCD_CLK       = 37;
-const int LCD_BACKLIGHT =  7;
-const int LCD_DATA_1    = 45;
-const int LCD_DATA_2    = 43;
-const int LCD_DATA_3    = 41;
-const int LCD_DATA_4    = 39;
-
-
 struct configuration {
     int mode;
     int light_level; // = 1023;  // max intensity of LED stripes
@@ -95,8 +90,6 @@ struct channel_data channels_data[CHANNELS];
 int gamma_correction[256];
 
 
-LiquidCrystal lcd(LCD_RS, LCD_CLK, LCD_DATA_1, LCD_DATA_2, LCD_DATA_3, LCD_DATA_4, LCD_BACKLIGHT);
-
 // FUNCTIONS
 
 void save_settings(struct configuration config) {
@@ -108,16 +101,16 @@ void save_settings(struct configuration config) {
 }
 
 void upload_settings(struct configuration config) {
-    Serial1.write(MODE);
-    Serial1.write(config.mode);
-    Serial1.write(LIGHT_LEVEL);
-    Serial1.write(config.light_level_percent);
-    Serial1.write(RED_COLOR);
-    Serial1.write(config.red_color);
-    Serial1.write(GREEN_COLOR);
-    Serial1.write(config.green_color);
-    Serial1.write(BLUE_COLOR);
-    Serial1.write(config.blue_color);
+    bt_serial.write(MODE);
+    bt_serial.write(config.mode);
+    bt_serial.write(LIGHT_LEVEL);
+    bt_serial.write(config.light_level_percent);
+    bt_serial.write(RED_COLOR);
+    bt_serial.write(config.red_color);
+    bt_serial.write(GREEN_COLOR);
+    bt_serial.write(config.green_color);
+    bt_serial.write(BLUE_COLOR);
+    bt_serial.write(config.blue_color);
 }
 
 void strip_write_color_linear(int strip, int max_level, int red, int green, int blue) {
@@ -145,34 +138,6 @@ void strip_write_color_with_correction(int strip, int max_level, int red, int gr
     Tlc.set(strip * 3 + 1, map(gamma_correction[green], 0, 4096, 0, max_level));
 }
 
-
-void display_status() {
-    char status_message[17];  
-    
-    lcd.clear();
-    switch(config.mode) {
-        case BOBLIGHT:
-            lcd.print("MODE: BOBLIGHT");
-            break;
-        case CONSTANT_COLOR:
-            lcd.print("MODE: STATIC");
-            break;
-        case MODE_OFF:
-            lcd.print("MODE: NO LIGHTS");
-            break;      
-    }
-    lcd.setCursor(0, 1);
-    sprintf(status_message, "LIGHT LEVEL: %d", config.light_level_percent);
-    lcd.print(status_message);   
-}
-
-void display_number(unsigned long number) {
-    char status_message[17];  
-    
-    lcd.setCursor(0, 1);
-    sprintf(status_message, "%lu", number);
-    lcd.print(status_message);   
-}
 
 int get_fade_out_value(int current_color, int new_color, long last_modified, long current_time) {
     int tmp_color;
@@ -335,12 +300,9 @@ void demo(channel_data channels_data[]) {
 
 void setup()  {
     
-    // LCD initialization
-    lcd.begin(16, 2);
-    lcd.touchBacklight();
-
     Serial.begin(115200); 
-    Serial1.begin(9600); 
+    //bt_serial.begin(14400);
+    bt_serial.begin(9600); 
     Tlc.init(0);
     
     // load settings from EEPROM
@@ -372,39 +334,34 @@ void setup()  {
 } 
 
 void loop()  { 
-    /*unsigned static long max_duration = 0;
-    unsigned long start = 0;
-    unsigned long end = 0;*/
     int command;
 
-    lcd.updateBacklight();
-
-    while(Serial1.available() >= 2) {
+    while(bt_serial.available() >= 2) {
         
-        command = Serial1.read();
+        command = bt_serial.read();
         switch(command) {
         case MODE:
-            config.mode = Serial1.read();
+            config.mode = bt_serial.read();
             break;
         case SAVE_SETTINGS:
-            Serial1.read(); // ignore value
+            bt_serial.read(); // ignore value
             save_settings(config);
             break;
         case LIGHT_LEVEL:
-            config.light_level_percent = Serial1.read();
+            config.light_level_percent = bt_serial.read();
             config.light_level = map(config.light_level_percent, 0, 100, 0, 4095);
             break;
         case RED_COLOR:
-            config.red_color = Serial1.read();
+            config.red_color = bt_serial.read();
             break;
         case GREEN_COLOR:
-            config.green_color = Serial1.read();
+            config.green_color = bt_serial.read();
             break;
         case BLUE_COLOR:
-            config.blue_color = Serial1.read();
+            config.blue_color = bt_serial.read();
             break;
         case UPLOAD_SETTINGS:
-            Serial1.read(); // ignore value
+            bt_serial.read(); // ignore value
             upload_settings(config);
             break;
         }
@@ -429,11 +386,6 @@ void loop()  {
             config.mode = BOBLIGHT;
             break;
     } // case mode    
-
-    /*if(end - start > max_duration && config.mode == BOBLIGHT && millis() > 5000) {
-        max_duration = end - start;
-        display_number(max_duration);
-    }*/
 }
 
 

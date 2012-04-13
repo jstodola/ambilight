@@ -34,7 +34,8 @@
 #	mega		Arduino Mega
 #	mini			Arduino Mini
 #	lilypad328	LilyPad Arduino w/ ATmega328  
-BOARD:=mega2560
+#BOARD:=mega2560
+BOARD:=atmega328
 
 # additional (comma separated) defines 
 # -DDOGM128_HW		board is connected to DOGM128 display
@@ -55,13 +56,14 @@ ARDUINO_PATH:=/home/honza/arduino/git/Arduino/
 AVRDUDE_PATH:= 
 
 # The unix device where we can reach the arduino board
-AVRDUDE_PORT:=/dev/ttyACM0
+AVRDUDE_PORT:=/dev/ttyUSB0
 
 # List of all libaries which should be included.
 EXTRA_DIRS=$(ARDUINO_PATH)libraries/LiquidCrystal_mod/
 #EXTRA_DIRS+=$(ARDUINO_PATH)libraries/MenuBackend_mod/
 EXTRA_DIRS+=$(ARDUINO_PATH)libraries/Tlc5940/
 EXTRA_DIRS+=$(ARDUINO_PATH)libraries/EEPROM/
+EXTRA_DIRS+=$(ARDUINO_PATH)libraries/SoftwareSerial/
 #EXTRA_DIRS+=/home/kraus/src/arduino/dogm128/hg/libraries/Dogm/
 
 #=== fetch parameter from boards.txt processor parameter ===
@@ -80,8 +82,8 @@ AVRDUDE_UPLOAD_RATE:=$(shell sed -n -e "s/$(BOARD).upload.speed=\(.*\)/\1/p" $(B
 # get the AVRDUDE_PROGRAMMER value from the $(BOARD).upload.protocol variable. For the atmega328 board this is stk500
 # AVRDUDE_PROGRAMMER:=$(shell sed -n -e "s/$(BOARD).upload.protocol=\(.*\)/\1/p" $(BOARDS_TXT))
 # use stk500v1, because stk500 will default to stk500v2
-#AVRDUDE_PROGRAMMER:=stk500v1
-AVRDUDE_PROGRAMMER:=stk500v2
+AVRDUDE_PROGRAMMER:=stk500v1
+#AVRDUDE_PROGRAMMER:=stk500v2
 
 #=== identify user files ===
 PDESRC:=$(shell ls *.pde)
@@ -149,7 +151,8 @@ COMMON_FLAGS += -Os
 COMMON_FLAGS += -Wall -funsigned-char -funsigned-bitfields -fpack-struct -fshort-enums
 COMMON_FLAGS += -I. 
 COMMON_FLAGS += -I$(ARDUINO_PATH)hardware/arduino/cores/arduino
-COMMON_FLAGS += -I$(ARDUINO_PATH)hardware/arduino/variants/mega
+#COMMON_FLAGS += -I$(ARDUINO_PATH)hardware/arduino/variants/mega
+COMMON_FLAGS += -I$(ARDUINO_PATH)hardware/arduino/variants/standard/
 COMMON_FLAGS += $(addprefix -I,$(EXTRA_DIRS))
 COMMON_FLAGS += -ffunction-sections -fdata-sections -Wl,--gc-sections
 COMMON_FLAGS += -Wl,--relax
