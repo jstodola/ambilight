@@ -231,9 +231,10 @@ void init_gamma_correction_table() {
     }
 }
 
-void boblight(channel_data channels_data[]) {
+unsigned long boblight(channel_data channels_data[]) {
     int red, green, blue;
     long current_time;
+    static unsigned long last_received = millis();
 
     if(Serial.available() >= 3 * CHANNELS + 1) {
         if(Serial.read() == 0xFF) {
@@ -258,8 +259,10 @@ void boblight(channel_data channels_data[]) {
                 strip_write_color(i, config.light_level, red, green, blue);
             }
             Tlc.update();
+            last_received = millis();
         }
     }
+    return last_received;
 }
 
 void one_color(int light_level, byte red_color, byte green_color, byte blue_color) {
@@ -335,6 +338,7 @@ void setup()  {
 
 void loop()  { 
     int command;
+    unsigned long last_received;
 
     while(bt_serial.available() >= 2) {
         
@@ -369,13 +373,17 @@ void loop()  {
 
     switch(config.mode) {
         case BOBLIGHT:
-            //start=micros();
-            boblight(channels_data);
-            //end = micros();
+            last_received = boblight(channels_data);
+            if(last_received < millis() - 5000) {   // 5 seconds without boblight data? switch to constant color
+                config.mode = CONSTANT_COLOR;
+            }
             break;
         case CONSTANT_COLOR:
-           one_color(config.light_level, config.red_color, config.green_color, config.blue_color);
-           break;
+            one_color(config.light_level, config.red_color, config.green_color, config.blue_color);
+            if(Serial.available() >= 3 * CHANNELS + 1) {    // data from boblight available? switch to BOBLIGHT mode
+                config.mode = BOBLIGHT;
+            }
+            break;
         case MODE_OFF:
             one_color(config.light_level, 0, 0, 0);
             break;
