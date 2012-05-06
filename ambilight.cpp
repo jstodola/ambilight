@@ -114,28 +114,16 @@ void upload_settings(struct configuration config) {
 }
 
 void strip_write_color_linear(int strip, int max_level, int red, int green, int blue) {
-    
-    if(strip & 1) {   // stupid feature, all odd stripes have RED <-> BLUE wires switched
-        Tlc.set(strip * 3, map(red, 0, 255, 0, max_level));
-        Tlc.set(strip * 3 + 2, map(blue, 0, 255, 0, max_level));
-    } else {
-        Tlc.set(strip * 3, map(blue, 0, 255, 0, max_level));
-        Tlc.set(strip * 3 + 2, map(red, 0, 255, 0, max_level));
-    }
-    Tlc.set(strip * 3 + 1, map(green, 0, 255, 0, max_level));
+    Tlc.set(strip * 3, map(green, 0, 255, 0, max_level));
+    Tlc.set(strip * 3 + 1, map(blue, 0, 255, 0, max_level));
+    Tlc.set(strip * 3 + 2, map(red, 0, 255, 0, max_level));
 }
 
 
 void strip_write_color_with_correction(int strip, int max_level, int red, int green, int blue) {
-    
-    if(strip & 1) {   // stupid feature, all odd stripes have RED <-> BLUE wires switched
-        Tlc.set(strip * 3, map(gamma_correction[red], 0, 4096, 0, max_level));
-        Tlc.set(strip * 3 + 2, map(gamma_correction[blue], 0, 4096, 0, max_level));
-    } else {
-        Tlc.set(strip * 3, map(gamma_correction[blue], 0, 4096, 0, max_level));
-        Tlc.set(strip * 3 + 2, map(gamma_correction[red], 0, 4096, 0, max_level));
-    }
-    Tlc.set(strip * 3 + 1, map(gamma_correction[green], 0, 4096, 0, max_level));
+    Tlc.set(strip * 3, map(gamma_correction[green], 0, 4096, 0, max_level));
+    Tlc.set(strip * 3 + 1, map(gamma_correction[blue], 0, 4096, 0, max_level));
+    Tlc.set(strip * 3 + 2, map(gamma_correction[red], 0, 4096, 0, max_level));
 }
 
 
