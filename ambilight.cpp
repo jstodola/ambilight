@@ -2,6 +2,7 @@
 #include <EEPROM.h>
 #include <Tlc5940.h>
 #include <stdio.h>
+#include "buffer.h"
 
 #define NANO
 
@@ -23,44 +24,6 @@ void save_settings(struct configuration config);
 
 void (*strip_write_color)(int strip, int max_level, int red, int green, int blue);
 
-// number of LED strips
-const int LEFT     = 6;
-const int TOP      = 8;
-const int RIGHT    = 6;
-
-const int CHANNELS = LEFT + TOP + RIGHT;
-
-float GAMMA = 2.0;
-
-const long FADE_OUT_DELAY     = 4000;  // 2s
-const long FADE_OUT_THRESHOLD = 50;    // fade out only when all colors are < FADE_OUT_THRESHOLD
-
-
-// android <-> arduino codes
-const byte MODE             = 1;
-const byte SAVE_SETTINGS    = 5;
-const byte LIGHT_LEVEL      = 10;
-const byte RED_COLOR        = 20;
-const byte GREEN_COLOR      = 21;
-const byte BLUE_COLOR       = 22;
-const byte UPLOAD_SETTINGS  = 200;
-
-
-// mode constants
-const byte BOBLIGHT         = 10;
-const byte CONSTANT_COLOR   = 20;
-const byte MODE_OFF         = 30;
-const byte DEMO             = 40;
-
-
-// EEPROM addresses
-const int MODE_ADDR          = 1;
-const int LIGHT_LEVEL_ADDR   = 2;
-const int RED_COLOR_ADDR     = 3;
-const int GREEN_COLOR_ADDR   = 4;
-const int BLUE_COLOR_ADDR    = 5;
-
-
 struct configuration {
     int mode;
     int light_level; // = 1023;  // max intensity of LED stripes
@@ -69,9 +32,6 @@ struct configuration {
     byte green_color;
     byte blue_color;
 };
-
-// global variables
-struct configuration config;
 
 struct rgb {
     int red;
@@ -85,9 +45,11 @@ struct channel_data {
     long last_modified;
 };
 
+// global variables
+struct configuration config;
 struct channel_data channels_data[CHANNELS];
-
 int gamma_correction[256];
+read_buffer buffer;
 
 
 // FUNCTIONS
@@ -224,13 +186,13 @@ unsigned long boblight(channel_data channels_data[]) {
     long current_time;
     static unsigned long last_received = millis();
 
-    if(Serial.available() >= 3 * CHANNELS + 1) {
-        if(Serial.read() == 0xFF) {
+    if(buffer.available() >= 3 * CHANNELS + 1) {
+        if(buffer.read() == 0xFF) {
             current_time = millis();
             for(int i = 0; i < CHANNELS; i++) {
-                red = Serial.read();
-                green = Serial.read();
-                blue = Serial.read();
+                red = buffer.read();
+                green = buffer.read();
+                blue = buffer.read();
         
 /*                if(red < FADE_OUT_THRESHOLD && green < FADE_OUT_THRESHOLD && blue < FADE_OUT_THRESHOLD) {
                     red = get_fade_out_value(channels_data[i].value.red, red, channels_data[i].last_modified, current_time);
@@ -321,7 +283,6 @@ void setup()  {
 
     // starting animation
     // fluorescent_lamp_animation();
-
 } 
 
 void loop()  { 
@@ -358,6 +319,9 @@ void loop()  {
             break;
         }
     }
+    while(Serial.available() > 0) {
+        buffer.store(Serial.read());
+    }
 
     switch(config.mode) {
         case BOBLIGHT:
@@ -368,7 +332,7 @@ void loop()  {
             break;
         case CONSTANT_COLOR:
             one_color(config.light_level, config.red_color, config.green_color, config.blue_color);
-            if(Serial.available() >= 3 * CHANNELS + 1) {    // data from boblight available? switch to BOBLIGHT mode
+            if(buffer.available() >= 3 * CHANNELS + 1) {    // data from boblight available? switch to BOBLIGHT mode
                 config.mode = BOBLIGHT;
             }
             break;
